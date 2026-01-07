@@ -1,10 +1,11 @@
 import { Fragment, useState, useEffect } from "react";
 import { Dialog, Transition, TransitionChild } from "@headlessui/react";
-import { Bars3Icon, XMarkIcon, HomeIcon, ClipboardDocumentListIcon, CalendarIcon, ChartBarIcon, DocumentTextIcon, CircleStackIcon, SunIcon, MoonIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, XMarkIcon, HomeIcon, ClipboardDocumentListIcon, CalendarIcon, DocumentTextIcon, CircleStackIcon, SunIcon, MoonIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: HomeIcon },
+  { name: "Analitik", href: "/analytics", icon: ChartBarIcon },
   { name: "Rekap Menu", href: "/overview", icon: CalendarIcon },
   { name: "Input Menu", href: "/input", icon: ClipboardDocumentListIcon },
   { name: "Laporan Harian", href: "/reports/daily", icon: DocumentTextIcon },
@@ -18,37 +19,37 @@ function classNames(...classes: string[]) {
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const [darkMode, setDarkMode] = useState(true); // Default to Dark
 
-  // Initialize Theme from LocalStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "light") {
-      setDarkMode(false);
-      document.documentElement.classList.remove("dark");
-    } else {
-      setDarkMode(true);
-      document.documentElement.classList.add("dark");
+  // Lazy initialize dark mode state
+  const [darkMode, setDarkMode] = useState(() => {
+    // Check localStorage (client side only)
+    if (typeof window !== "undefined") {
+      const savedTheme = localStorage.getItem("theme");
+      return savedTheme !== "light"; // Default to dark unless explicitly light
     }
-  }, []);
+    return true;
+  });
 
-  // Toggle Theme Function
-  const toggleTheme = () => {
-    const newMode = !darkMode;
-    setDarkMode(newMode);
-    if (newMode) {
+  // Sync Theme with DOM
+  useEffect(() => {
+    console.log("Theme Effect Triggered. DarkMode:", darkMode); // DEBUG
+    if (darkMode) {
       document.documentElement.classList.add("dark");
       localStorage.setItem("theme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("theme", "light");
     }
+  }, [darkMode]);
+
+  // Toggle Theme Function
+  const toggleTheme = () => {
+    console.log("Toggling theme. Current:", darkMode, "Next:", !darkMode); // DEBUG
+    setDarkMode(!darkMode);
   };
 
   return (
     <div className={`min-h-screen ${darkMode ? "dark" : ""}`}>
-      {" "}
-      {/* Wrapper just in case, though html class handles it */}
       <div className="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-300">
         {/* Mobile Sidebar Dialog */}
         <Transition show={sidebarOpen} as={Fragment}>
