@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { PrinterIcon } from "@heroicons/react/24/outline";
 
@@ -160,116 +160,7 @@ export default function DailyMenuReportPage() {
   const [metaMalam, setMetaMalam] = useState<MenuMeta | null>(null);
 
   const [loading, setLoading] = useState(false);
-
-  // Define fetchReport via useCallback to allowing hoisting/ordering fix
-  const fetchReport = useCallback(async () => {
-    if (!selectedCateringId) return;
-
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("daily_menus")
-      .select(
-        `
-        id, 
-        meal_time,
-        is_compliant,
-        catering:caterings(name), 
-        dishes:menu_dishes(
-          name, 
-          ingredients:dish_ingredients(
-            ingredient_name,
-            weight_cooked, 
-            weight_raw, 
-            bdd_percent, 
-            conversion_factor,
-            conversion:conversion_factors(food_name),
-            ingredients_library ( energy_kcal )
-          )
-        )
-      `
-      )
-      .eq("date", selectedDate)
-      .eq("catering_id", selectedCateringId);
-
-    if (error) {
-      console.error("Error fetching report:", error);
-      setLoading(false);
-      return;
-    }
-
-    if (!data) {
-      setDataPagi([]);
-      setDataSiang([]);
-      setDataMalam([]);
-      setMetaPagi(null);
-      setMetaSiang(null);
-      setMetaMalam(null);
-      setLoading(false);
-      return;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const processMenus = (menus: any[]) => {
-      const flatRows: FlatRow[] = [];
-      let meta: MenuMeta | null = null;
-
-      if (menus.length > 0) {
-        meta = { id: menus[0].id, isCompliant: menus[0].is_compliant ?? true };
-      }
-
-      menus.forEach((menu) => {
-        const cateringName = menu.catering?.name || "Unknown Catering";
-        const dishes = menu.dishes || [];
-
-        const cateringStartIndex = flatRows.length;
-        let totalCateringRows = 0;
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        dishes.forEach((dish: any) => {
-          const ingredients = dish.ingredients || [];
-          if (ingredients.length === 0) return;
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ingredients.forEach((ing: any, ingIndex: number) => {
-            const energy = ing.ingredients_library?.energy_kcal || 0;
-            const calories = calculateCalories(ing.weight_raw, ing.bdd_percent, energy);
-
-            flatRows.push({
-              cateringName,
-              dishName: dish.name,
-              ingredient: ing,
-              cateringRowSpan: 0,
-              dishRowSpan: ingIndex === 0 ? ingredients.length : 0,
-              calories,
-            });
-          });
-
-          totalCateringRows += ingredients.length;
-        });
-
-        if (totalCateringRows > 0) {
-          flatRows[cateringStartIndex].cateringRowSpan = totalCateringRows;
-        }
-      });
-      return { rows: flatRows, meta };
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const resultPagi = processMenus((data as any[]).filter((m) => m.meal_time === "Pagi"));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const resultSiang = processMenus((data as any[]).filter((m) => m.meal_time === "Siang"));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const resultMalam = processMenus((data as any[]).filter((m) => m.meal_time === "Malam"));
-
-    setDataPagi(resultPagi.rows);
-    setMetaPagi(resultPagi.meta);
-    setDataSiang(resultSiang.rows);
-    setMetaSiang(resultSiang.meta);
-    setDataMalam(resultMalam.rows);
-    setMetaMalam(resultMalam.meta);
-
-    setLoading(false);
-  }, [selectedDate, selectedCateringId]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Fetch Caterings
   useEffect(() => {
@@ -286,8 +177,117 @@ export default function DailyMenuReportPage() {
   // Fetch All Report Data
   useEffect(() => {
     if (!selectedCateringId) return;
+
+    // Define fetch logic inside effect
+    async function fetchReport() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("daily_menus")
+        .select(
+          `
+            id, 
+            meal_time,
+            is_compliant,
+            catering:caterings(name), 
+            dishes:menu_dishes(
+              name, 
+              ingredients:dish_ingredients(
+                ingredient_name,
+                weight_cooked, 
+                weight_raw, 
+                bdd_percent, 
+                conversion_factor,
+                conversion:conversion_factors(food_name),
+                ingredients_library ( energy_kcal )
+              )
+            )
+          `
+        )
+        .eq("date", selectedDate)
+        .eq("catering_id", selectedCateringId);
+
+      if (error) {
+        console.error("Error fetching report:", error);
+        setLoading(false);
+        return;
+      }
+
+      if (!data) {
+        setDataPagi([]);
+        setDataSiang([]);
+        setDataMalam([]);
+        setMetaPagi(null);
+        setMetaSiang(null);
+        setMetaMalam(null);
+        setLoading(false);
+        return;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const processMenus = (menus: any[]) => {
+        const flatRows: FlatRow[] = [];
+        let meta: MenuMeta | null = null;
+
+        if (menus.length > 0) {
+          meta = { id: menus[0].id, isCompliant: menus[0].is_compliant ?? true };
+        }
+
+        menus.forEach((menu) => {
+          const cateringName = menu.catering?.name || "Unknown Catering";
+          const dishes = menu.dishes || [];
+
+          const cateringStartIndex = flatRows.length;
+          let totalCateringRows = 0;
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          dishes.forEach((dish: any) => {
+            const ingredients = dish.ingredients || [];
+            if (ingredients.length === 0) return;
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ingredients.forEach((ing: any, ingIndex: number) => {
+              const energy = ing.ingredients_library?.energy_kcal || 0;
+              const calories = calculateCalories(ing.weight_raw, ing.bdd_percent, energy);
+
+              flatRows.push({
+                cateringName,
+                dishName: dish.name,
+                ingredient: ing,
+                cateringRowSpan: 0,
+                dishRowSpan: ingIndex === 0 ? ingredients.length : 0,
+                calories,
+              });
+            });
+
+            totalCateringRows += ingredients.length;
+          });
+
+          if (totalCateringRows > 0) {
+            flatRows[cateringStartIndex].cateringRowSpan = totalCateringRows;
+          }
+        });
+        return { rows: flatRows, meta };
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultPagi = processMenus((data as any[]).filter((m) => m.meal_time === "Pagi"));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultSiang = processMenus((data as any[]).filter((m) => m.meal_time === "Siang"));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultMalam = processMenus((data as any[]).filter((m) => m.meal_time === "Malam"));
+
+      setDataPagi(resultPagi.rows);
+      setMetaPagi(resultPagi.meta);
+      setDataSiang(resultSiang.rows);
+      setMetaSiang(resultSiang.meta);
+      setDataMalam(resultMalam.rows);
+      setMetaMalam(resultMalam.meta);
+
+      setLoading(false);
+    }
+
     fetchReport();
-  }, [fetchReport, selectedCateringId]); // fetchReport is now a dependency
+  }, [selectedDate, selectedCateringId, refreshTrigger]);
 
   // Toggle Handler
   const handleToggleCompliance = async (id: number, currentStatus: boolean) => {
@@ -302,7 +302,8 @@ export default function DailyMenuReportPage() {
 
     if (error) {
       console.error("Failed to update compliance:", error);
-      fetchReport();
+      // Trigger refresh on error to revert state
+      setRefreshTrigger((prev) => prev + 1);
     }
   };
 
