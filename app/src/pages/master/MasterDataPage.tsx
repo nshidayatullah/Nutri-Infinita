@@ -16,16 +16,22 @@ export default function MasterDataPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Master Data</h2>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">Kelola data referensi aplikasi</p>
+      </div>
+
       {/* Tab Navigation */}
-      <div className="border-b border-white/10">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+      <div className="border-b border-gray-200 dark:border-white/10">
+        <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors
-                ${activeTab === tab.id ? "border-green-500 text-green-400" : "border-transparent text-gray-400 hover:border-gray-300 hover:text-gray-300"}
+                whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors outline-none
+                ${activeTab === tab.id ? "border-green-500 text-green-600 dark:text-green-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-300 hover:text-gray-700 dark:hover:text-gray-300"}
               `}
             >
               {tab.name}
@@ -35,7 +41,7 @@ export default function MasterDataPage() {
       </div>
 
       {/* Tab Content */}
-      <div>
+      <div className="min-h-[500px]">
         {activeTab === "catering" && <MasterCateringPage />}
         {activeTab === "tkpi" && <MasterTKPIPage />}
         {activeTab === "conversion" && <MasterConversionFactorsPage />}

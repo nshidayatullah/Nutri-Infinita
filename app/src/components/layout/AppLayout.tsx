@@ -9,7 +9,7 @@ const navigation = [
   { name: "Rekap Menu", href: "/overview", icon: CalendarIcon },
   { name: "Input Menu", href: "/input", icon: ClipboardDocumentListIcon },
   { name: "Laporan Harian", href: "/reports/daily", icon: DocumentTextIcon },
-  { name: "Master Data", href: "/master/ingredients", icon: CircleStackIcon },
+  { name: "Master Data", href: "/master", icon: CircleStackIcon },
 ];
 
 function classNames(...classes: string[]) {
