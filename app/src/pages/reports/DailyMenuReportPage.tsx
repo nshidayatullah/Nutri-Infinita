@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
-import { PrinterIcon, CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
-import { Switch } from "@headlessui/react"; // Assuming headlessui is available, or simplistic manual toggle
+import { PrinterIcon } from "@heroicons/react/24/outline";
 
 // Types
 type Ingredient = {
@@ -23,21 +22,17 @@ type FlatRow = {
   calories: number;
 };
 
-// Metadata for menu compliance
 type MenuMeta = {
   id: number;
   isCompliant: boolean;
 };
 
-// Helper: Calculate Calories
 function calculateCalories(weightRaw: number, bdd: number, energyPer100g: number): number {
   const edibleWeight = weightRaw * (bdd / 100);
   return (edibleWeight / 100) * energyPer100g;
 }
 
-// Reusable Table Component with Compliance Toggle
 function ReportTable({ title, rows, loading, menuMeta, onToggleCompliance }: { title: string; rows: FlatRow[]; loading: boolean; menuMeta: MenuMeta | null; onToggleCompliance: (id: number, currentStatus: boolean) => void }) {
-  // Calculate Total Calories
   const totalCalories = rows.reduce((sum, row) => sum + row.calories, 0);
 
   return (
@@ -46,7 +41,6 @@ function ReportTable({ title, rows, loading, menuMeta, onToggleCompliance }: { t
         <div className="flex items-center gap-4">
           <h3 className="text-lg font-bold text-white print:text-black uppercase tracking-wider mobile:text-base">{title}</h3>
 
-          {/* Compliance Toggle (Hidden on Print) */}
           {menuMeta && (
             <div className="flex items-center gap-2 print:hidden bg-gray-900/50 px-3 py-1 rounded-full border border-white/10">
               <span className={`text-xs font-semibold ${menuMeta.isCompliant ? "text-green-400" : "text-red-400"}`}>{menuMeta.isCompliant ? "Sesuai Standar" : "Tidak Sesuai"}</span>
@@ -68,7 +62,6 @@ function ReportTable({ title, rows, loading, menuMeta, onToggleCompliance }: { t
             </div>
           )}
 
-          {/* Print Only Compliance Badge */}
           {menuMeta && (
             <div className="hidden print:flex items-center gap-1 border border-black px-2 py-0.5 rounded text-xs uppercase font-bold">
               {menuMeta.isCompliant ? (
@@ -162,33 +155,16 @@ export default function DailyMenuReportPage() {
   const [dataSiang, setDataSiang] = useState<FlatRow[]>([]);
   const [dataMalam, setDataMalam] = useState<FlatRow[]>([]);
 
-  // Metadata states (ID & Compliance)
   const [metaPagi, setMetaPagi] = useState<MenuMeta | null>(null);
   const [metaSiang, setMetaSiang] = useState<MenuMeta | null>(null);
   const [metaMalam, setMetaMalam] = useState<MenuMeta | null>(null);
 
   const [loading, setLoading] = useState(false);
 
-  // Fetch Caterings
-  useEffect(() => {
-    async function fetchCaterings() {
-      const { data } = await supabase.from("caterings").select("id, name").order("name");
-      if (data && data.length > 0) {
-        setCaterings(data);
-        setSelectedCateringId(data[0].id);
-      }
-    }
-    fetchCaterings();
-  }, []);
-
-  // Fetch All Report Data
-  useEffect(() => {
+  // Define fetchReport via useCallback to allowing hoisting/ordering fix
+  const fetchReport = useCallback(async () => {
     if (!selectedCateringId) return;
 
-    fetchReport();
-  }, [selectedDate, selectedCateringId]);
-
-  async function fetchReport() {
     setLoading(true);
     const { data, error } = await supabase
       .from("daily_menus")
@@ -238,7 +214,6 @@ export default function DailyMenuReportPage() {
       let meta: MenuMeta | null = null;
 
       if (menus.length > 0) {
-        // Assume 1 menu per session for this catering
         meta = { id: menus[0].id, isCompliant: menus[0].is_compliant ?? true };
       }
 
@@ -279,7 +254,6 @@ export default function DailyMenuReportPage() {
       return { rows: flatRows, meta };
     };
 
-    // Filter and process individual meal times
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const resultPagi = processMenus((data as any[]).filter((m) => m.meal_time === "Pagi"));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -295,7 +269,25 @@ export default function DailyMenuReportPage() {
     setMetaMalam(resultMalam.meta);
 
     setLoading(false);
-  }
+  }, [selectedDate, selectedCateringId]);
+
+  // Fetch Caterings
+  useEffect(() => {
+    async function fetchCaterings() {
+      const { data } = await supabase.from("caterings").select("id, name").order("name");
+      if (data && data.length > 0) {
+        setCaterings(data);
+        setSelectedCateringId(data[0].id);
+      }
+    }
+    fetchCaterings();
+  }, []);
+
+  // Fetch All Report Data
+  useEffect(() => {
+    if (!selectedCateringId) return;
+    fetchReport();
+  }, [fetchReport, selectedCateringId]); // fetchReport is now a dependency
 
   // Toggle Handler
   const handleToggleCompliance = async (id: number, currentStatus: boolean) => {
@@ -310,7 +302,6 @@ export default function DailyMenuReportPage() {
 
     if (error) {
       console.error("Failed to update compliance:", error);
-      // Revert (could be improved with better state management, but sufficient for now)
       fetchReport();
     }
   };

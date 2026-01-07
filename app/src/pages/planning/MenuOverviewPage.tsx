@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { ChevronLeftIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 
@@ -17,7 +17,6 @@ export default function MenuOverviewPage() {
   const [selectedCateringId, setSelectedCateringId] = useState<number | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [menus, setMenus] = useState<DailyMenu[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // Fetch Caterings
   useEffect(() => {
@@ -36,7 +35,6 @@ export default function MenuOverviewPage() {
     if (!selectedCateringId) return;
 
     async function fetchMenus() {
-      setLoading(true);
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth() + 1;
 
@@ -58,7 +56,6 @@ export default function MenuOverviewPage() {
 
       if (error) console.error("Error fetching menus:", error);
       if (data) setMenus(data);
-      setLoading(false);
     }
 
     fetchMenus();
@@ -86,11 +83,6 @@ export default function MenuOverviewPage() {
 
   const navigateToInput = (day: number, mealTime: string) => {
     const dateStr = `${year}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    // Navigate to input page with queries
-    // We need to update MenuInputPage to handle URL params (or use global state? params is better)
-    // For now, let's assume we pass state via navigation or url params
-    // Since MenuInputPage uses internal state, we should ideally pass it via URL query params ?date=..&mealTime=..
-    // But user didn't request URL param support yet. I will update App.tsx route to support parameters or use navigate state
     navigate("/input", { state: { date: dateStr, mealTime } });
   };
 
