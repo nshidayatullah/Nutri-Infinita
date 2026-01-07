@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { ChartBarIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { ChartBarIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, CalendarDaysIcon, FunnelIcon } from "@heroicons/react/24/outline";
+
+type Catering = {
+  id: number;
+  name: string;
+};
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
+  const [caterings, setCaterings] = useState<Catering[]>([]);
+  const [selectedCateringId, setSelectedCateringId] = useState<number | null>(null);
+
   const [stats, setStats] = useState({
     totalMenus: 0,
     compliantMenus: 0,
@@ -15,16 +23,24 @@ export default function AnalyticsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [recentIssues, setRecentIssues] = useState<any[]>([]);
 
+  // Fetch Caterings
+  useEffect(() => {
+    async function fetchCaterings() {
+      const { data } = await supabase.from("caterings").select("id, name").order("name");
+      if (data) setCaterings(data);
+    }
+    fetchCaterings();
+  }, []);
+
+  // Fetch Analytics Data
   useEffect(() => {
     async function fetchAnalytics() {
       setLoading(true);
 
-      // Fetch all daily menus for stats
-      // Limit to last 30 days for relevance
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const { data: menus, error } = await supabase
+      let query = supabase
         .from("daily_menus")
         .select(
           `
@@ -41,6 +57,12 @@ export default function AnalyticsPage() {
         .gte("date", thirtyDaysAgo.toISOString().split("T")[0])
         .order("date", { ascending: false });
 
+      if (selectedCateringId) {
+        query = query.eq("catering_id", selectedCateringId);
+      }
+
+      const { data: menus, error } = await query;
+
       if (error) {
         console.error("Error loading analytics:", error);
         setLoading(false);
@@ -49,11 +71,10 @@ export default function AnalyticsPage() {
 
       if (menus) {
         const total = menus.length;
-        const compliant = menus.filter((m) => m.is_compliant !== false).length; // Default true if null
+        const compliant = menus.filter((m) => m.is_compliant !== false).length;
         const nonCompliant = total - compliant;
         const rate = total > 0 ? (compliant / total) * 100 : 100;
 
-        // Calculate Average Calories
         let totalCaloriesSum = 0;
         let menusWithCalories = 0;
 
@@ -96,13 +117,32 @@ export default function AnalyticsPage() {
     }
 
     fetchAnalytics();
-  }, []);
+  }, [selectedCateringId]);
 
   return (
     <div className="space-y-8 pb-20">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Analitik Kinerja Menu</h2>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Laporan kinerja dan kepatuhan standar gizi (30 Hari Terakhir)</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Analitik Kinerja Menu</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Laporan kinerja dan kepatuhan standar gizi (30 Hari Terakhir)</p>
+        </div>
+
+        {/* Catering Filter */}
+        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1.5 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm">
+          <FunnelIcon className="h-5 w-5 text-gray-400 ml-2" />
+          <select
+            value={selectedCateringId || ""}
+            onChange={(e) => setSelectedCateringId(e.target.value ? Number(e.target.value) : null)}
+            className="bg-transparent text-sm font-medium text-gray-900 dark:text-white border-none focus:ring-0 cursor-pointer min-w-[200px]"
+          >
+            <option value="">Semua Catering</option>
+            {caterings.map((cat) => (
+              <option key={cat.id} value={cat.id} className="text-black bg-white">
+                {cat.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loading ? (
