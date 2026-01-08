@@ -103,6 +103,7 @@ export default function MenuInputPage() {
       }
     }
     initData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch Menu Data when Filters Change

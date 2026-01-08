@@ -40,8 +40,12 @@ export default function MasterMealTimePage() {
   const handleDelete = async () => {
     if (!deleteId) return;
     const { error } = await supabase.from("meal_types").delete().eq("id", deleteId);
-    if (!error) fetchData();
-    else alert("Gagal menghapus.");
+    if (!error) {
+      fetchData();
+    } else {
+      console.error("Delete error:", error);
+      alert(`Gagal menghapus: ${error.message}`);
+    }
     setDeleteId(null);
   };
 
