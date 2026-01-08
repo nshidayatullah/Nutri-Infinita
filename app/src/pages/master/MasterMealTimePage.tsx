@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { PlusIcon, TrashIcon, PencilIcon, XMarkIcon, CheckIcon } from "@heroicons/react/24/outline";
 import ConfirmationModal from "../../components/ui/ConfirmationModal";
@@ -21,17 +21,18 @@ export default function MasterMealTimePage() {
   // Modal State
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const fetchData = useCallback(async () => {
+  async function fetchData() {
     setLoading(true);
     const { data, error } = await supabase.from("meal_types").select("*").order("sort_order");
     if (error) console.error(error);
     if (data) setMealTypes(data);
     setLoading(false);
-  }, []);
+  }
 
   useEffect(() => {
+    // eslint-disable-next-line
     fetchData();
-  }, [fetchData]);
+  }, []);
 
   const confirmDelete = (id: number) => {
     setDeleteId(id);

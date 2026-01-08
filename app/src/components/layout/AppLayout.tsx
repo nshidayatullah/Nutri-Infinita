@@ -81,9 +81,7 @@ export default function AppLayout() {
                   {/* Mobile Sidebar Content */}
                   <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-gray-900 px-6 pb-4 ring-1 ring-gray-900/10 dark:ring-white/10 transition-colors duration-300">
                     <div className="flex h-16 shrink-0 items-center">
-                      <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg">
-                        <span className="text-white font-bold text-xl">∞</span>
-                      </div>
+                      <img src="/logo.jpg" alt="Logo" className="h-10 w-auto rounded-lg" />
                       <span className="ml-3 text-xl font-bold tracking-tight text-gray-900 dark:text-white">Nutri Infinita</span>
                     </div>
                     <nav className="flex flex-1 flex-col">
@@ -121,9 +119,7 @@ export default function AppLayout() {
         <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
           <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 dark:border-white/5 bg-white dark:bg-gray-900/50 dark:backdrop-blur-xl px-6 pb-4 transition-colors duration-300">
             <div className="flex h-16 shrink-0 items-center">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-xl">∞</span>
-              </div>
+              <img src="/logo.jpg" alt="Logo" className="h-10 w-auto rounded-lg" />
               <span className="ml-3 text-xl font-bold tracking-tight text-gray-900 dark:text-white">Nutri Infinita</span>
             </div>
             <nav className="flex flex-1 flex-col">
