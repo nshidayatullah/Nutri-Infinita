@@ -106,13 +106,30 @@ export default function MasterMealTimePage() {
             {isAdding && (
               <tr className="bg-green-50 dark:bg-green-900/10">
                 <td className="p-4">
-                  <input type="text" value={addForm.emoji} onChange={(e) => setAddForm({ ...addForm, emoji: e.target.value })} className="w-10 text-center bg-white dark:bg-gray-700 border rounded p-1" />
+                  <input
+                    type="text"
+                    value={addForm.emoji}
+                    onChange={(e) => setAddForm({ ...addForm, emoji: e.target.value })}
+                    className="w-10 text-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded p-1"
+                  />
                 </td>
                 <td className="p-4">
-                  <input type="text" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} placeholder="Contoh: Snack Malam" className="w-full bg-white dark:bg-gray-700 border rounded p-2" autoFocus />
+                  <input
+                    type="text"
+                    value={addForm.name}
+                    onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                    placeholder="Contoh: Snack Malam"
+                    className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded p-2"
+                    autoFocus
+                  />
                 </td>
                 <td className="p-4">
-                  <input type="number" value={addForm.sort_order} onChange={(e) => setAddForm({ ...addForm, sort_order: Number(e.target.value) })} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-2" />
+                  <input
+                    type="number"
+                    value={addForm.sort_order}
+                    onChange={(e) => setAddForm({ ...addForm, sort_order: Number(e.target.value) })}
+                    className="w-full text-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded p-2"
+                  />
                 </td>
                 <td className="p-4 flex gap-2 justify-center">
                   <button onClick={handleAdd} className="p-2 bg-green-600 text-white rounded hover:bg-green-500">
@@ -130,13 +147,28 @@ export default function MasterMealTimePage() {
                 {editingId === item.id ? (
                   <>
                     <td className="p-4">
-                      <input type="text" value={editForm.emoji} onChange={(e) => setEditForm({ ...editForm, emoji: e.target.value })} className="w-10 text-center bg-white dark:bg-gray-700 border rounded p-1" />
+                      <input
+                        type="text"
+                        value={editForm.emoji}
+                        onChange={(e) => setEditForm({ ...editForm, emoji: e.target.value })}
+                        className="w-10 text-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded p-1"
+                      />
                     </td>
                     <td className="p-4">
-                      <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="w-full bg-white dark:bg-gray-700 border rounded p-2" />
+                      <input
+                        type="text"
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded p-2"
+                      />
                     </td>
                     <td className="p-4">
-                      <input type="number" value={editForm.sort_order} onChange={(e) => setEditForm({ ...editForm, sort_order: Number(e.target.value) })} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-2" />
+                      <input
+                        type="number"
+                        value={editForm.sort_order}
+                        onChange={(e) => setEditForm({ ...editForm, sort_order: Number(e.target.value) })}
+                        className="w-full text-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded p-2"
+                      />
                     </td>
                     <td className="p-4 flex gap-2 justify-center">
                       <button onClick={saveEdit} className="p-2 bg-green-600 text-white rounded hover:bg-green-500">

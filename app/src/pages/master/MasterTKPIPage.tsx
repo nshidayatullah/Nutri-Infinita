@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import * as XLSX from "xlsx";
 import { ArrowDownTrayIcon, ArrowUpTrayIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import ConfirmationModal from "../../components/ui/ConfirmationModal";
 
 type Ingredient = {
   id: number;
@@ -77,6 +78,7 @@ export default function MasterTKPIPage() {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
   const [submitting, setSubmitting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -316,16 +318,12 @@ export default function MasterTKPIPage() {
   };
 
   // Delete All Data Function
-  const handleDeleteAll = async () => {
-    if (!window.confirm("PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA TKPI?\n\nTindakan ini akan mengosongkan seluruh perpustakaan bahan makanan dan tidak dapat dibatalkan!")) {
-      return;
-    }
+  // Delete All Data Function
+  const confirmDeleteAll = () => {
+    setIsResetModalOpen(true);
+  };
 
-    // Double confirmation for safety
-    if (!window.confirm("KONFIRMASI TERAKHIR: Anda benar-benar ingin menghapus semua data?")) {
-      return;
-    }
-
+  const executeDeleteAll = async () => {
     setLoading(true);
     try {
       // Delete all rows where id is not -1 (effectively all rows)
@@ -341,6 +339,7 @@ export default function MasterTKPIPage() {
       setError("Gagal menghapus data: " + errorMessage);
     } finally {
       setLoading(false);
+      setIsResetModalOpen(false);
     }
   };
 
@@ -359,7 +358,7 @@ export default function MasterTKPIPage() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-green-500 border-r-transparent"></div>
-          <p className="mt-2 text-sm text-gray-400">Loading...</p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -368,8 +367,8 @@ export default function MasterTKPIPage() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="rounded-xl border border-red-500/20 bg-red-50 dark:bg-red-500/10 p-4">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
 
@@ -380,15 +379,15 @@ export default function MasterTKPIPage() {
             placeholder="Cari bahan makanan..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full max-w-md rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-gray-400 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+            className="w-full max-w-md rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
           />
         </div>
 
         {/* Import / Export Buttons */}
         <div className="flex gap-2">
           <button
-            onClick={handleDeleteAll}
-            className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors mr-2"
+            onClick={confirmDeleteAll}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 transition-colors mr-2"
             title="Hapus Semua Data"
           >
             <TrashIcon className="h-4 w-4" />
@@ -397,7 +396,7 @@ export default function MasterTKPIPage() {
 
           <button
             onClick={() => handleExport("xlsx")}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"
             title="Export ke Excel"
           >
             <ArrowUpTrayIcon className="h-4 w-4" />
@@ -406,7 +405,7 @@ export default function MasterTKPIPage() {
 
           <div className="relative">
             <input type="file" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Import dari Excel/CSV" />
-            <button className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors pointer-events-none">
+            <button className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors pointer-events-none">
               <ArrowDownTrayIcon className="h-4 w-4" />
               Import
             </button>
@@ -418,198 +417,221 @@ export default function MasterTKPIPage() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm flex flex-col h-[75vh]">
+      <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-sm flex flex-col h-[75vh] shadow-sm">
         <div className="flex-1 overflow-auto relative">
           <table className="w-full text-left text-xs whitespace-nowrap">
             <thead className="sticky top-0 z-30 shadow-lg">
               {/* Group Headers */}
-              <tr className="border-b border-gray-700">
-                <th colSpan={3} className="sticky left-0 z-40 bg-gray-900 px-3 py-2 text-center text-xs font-bold text-green-400 border-b border-b-gray-700 border-r-2 border-r-white/20">
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th
+                  colSpan={3}
+                  className="sticky left-0 z-40 bg-white dark:bg-gray-900 px-3 py-2 text-center text-xs font-bold text-green-700 dark:text-green-400 border-b border-b-gray-200 dark:border-b-gray-700 border-r-2 border-r-gray-200 dark:border-r-white/20"
+                >
                   📋 Informasi Bahan
                 </th>
-                <th colSpan={7} className="px-3 py-2 text-center text-xs font-bold text-blue-400 border-b border-b-gray-700 border-r border-r-white/10 bg-gray-900">
+                <th
+                  colSpan={7}
+                  className="px-3 py-2 text-center text-xs font-bold text-blue-700 dark:text-blue-400 border-b border-b-gray-200 dark:border-b-gray-700 border-r border-r-gray-200 dark:border-r-white/10 bg-blue-100 dark:bg-blue-900/40"
+                >
                   🥗 Nutrisi Makro
                 </th>
-                <th colSpan={7} className="px-3 py-2 text-center text-xs font-bold text-orange-400 border-b border-b-gray-700 border-r border-r-white/10 bg-gray-900">
+                <th
+                  colSpan={7}
+                  className="px-3 py-2 text-center text-xs font-bold text-orange-700 dark:text-orange-400 border-b border-b-gray-200 dark:border-b-gray-700 border-r border-r-gray-200 dark:border-r-white/10 bg-orange-100 dark:bg-orange-900/40"
+                >
                   ⚗️ Mineral
                 </th>
-                <th colSpan={7} className="px-3 py-2 text-center text-xs font-bold text-yellow-400 border-b border-b-gray-700 border-r border-r-white/10 bg-gray-900">
+                <th
+                  colSpan={7}
+                  className="px-3 py-2 text-center text-xs font-bold text-yellow-700 dark:text-yellow-400 border-b border-b-gray-200 dark:border-b-gray-700 border-r border-r-gray-200 dark:border-r-white/10 bg-yellow-100 dark:bg-yellow-900/40"
+                >
                   💊 Vitamin
                 </th>
-                <th rowSpan={2} className="px-3 py-2 text-center text-xs font-bold text-purple-400 border-b border-b-gray-700 border-r border-r-white/10 bg-gray-900">
+                <th
+                  rowSpan={2}
+                  className="px-3 py-2 text-center text-xs font-bold text-purple-700 dark:text-purple-400 border-b border-b-gray-200 dark:border-b-gray-700 border-r border-r-gray-200 dark:border-r-white/10 bg-purple-100 dark:bg-purple-900/40"
+                >
                   BDD
                   <br />
                   (%)
                 </th>
-                <th rowSpan={2} className="px-3 py-2 text-center text-xs font-bold text-gray-400 border-b border-b-gray-700 bg-gray-900">
+                <th rowSpan={2} className="px-3 py-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400 border-b border-b-gray-200 dark:border-b-gray-700 bg-white dark:bg-gray-900">
                   Aksi
                 </th>
               </tr>
 
               {/* Column Headers */}
-              <tr className="bg-gray-800 text-gray-300">
-                <th className="sticky left-0 z-40 bg-gray-900 border-r border-white/10 border-b border-gray-700 px-3 py-2 font-medium w-[80px] min-w-[80px]">Kode</th>
-                <th className="sticky left-[80px] z-40 bg-gray-900 border-r border-white/10 border-b border-gray-700 px-3 py-2 font-medium w-[256px] min-w-[256px]">Nama Bahan</th>
-                <th className="sticky left-[336px] z-40 bg-gray-900 border-r-2 border-white/20 border-b border-gray-700 px-3 py-2 font-medium w-[128px] min-w-[128px]">Sumber</th>
+              <tr className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                <th className="sticky left-0 z-40 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-white/10 border-b border-gray-200 dark:border-gray-700 px-3 py-2 font-medium w-[80px] min-w-[80px]">Kode</th>
+                <th className="sticky left-[80px] z-40 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-white/10 border-b border-gray-200 dark:border-gray-700 px-3 py-2 font-medium w-[256px] min-w-[256px]">Nama Bahan</th>
+                <th className="sticky left-[336px] z-40 bg-white dark:bg-gray-900 border-r-2 border-gray-200 dark:border-white/20 border-b border-gray-200 dark:border-gray-700 px-3 py-2 font-medium w-[128px] min-w-[128px]">Sumber</th>
 
-                <th className="px-3 py-2 font-medium text-blue-300 bg-blue-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Air
                   <br />
                   (g)
                 </th>
-                <th className="px-3 py-2 font-medium text-blue-300 bg-blue-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Energi
                   <br />
                   (kal)
                 </th>
-                <th className="px-3 py-2 font-medium text-blue-300 bg-blue-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Prot
                   <br />
                   (g)
                 </th>
-                <th className="px-3 py-2 font-medium text-blue-300 bg-blue-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Lemak
                   <br />
                   (g)
                 </th>
-                <th className="px-3 py-2 font-medium text-blue-300 bg-blue-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   KH
                   <br />
                   (g)
                 </th>
-                <th className="px-3 py-2 font-medium text-blue-300 bg-blue-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Serat
                   <br />
                   (g)
                 </th>
-                <th className="px-3 py-2 font-medium text-blue-300 bg-blue-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Abu
                   <br />
                   (g)
                 </th>
 
-                <th className="px-3 py-2 font-medium text-orange-300 bg-orange-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-orange-800 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Kal
                   <br />
                   (mg)
                 </th>
-                <th className="px-3 py-2 font-medium text-orange-300 bg-orange-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-orange-800 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Fos
                   <br />
                   (mg)
                 </th>
-                <th className="px-3 py-2 font-medium text-orange-300 bg-orange-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-orange-800 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Besi
                   <br />
                   (mg)
                 </th>
-                <th className="px-3 py-2 font-medium text-orange-300 bg-orange-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-orange-800 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Nat
                   <br />
                   (mg)
                 </th>
-                <th className="px-3 py-2 font-medium text-orange-300 bg-orange-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-orange-800 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Kalium
                   <br />
                   (mg)
                 </th>
-                <th className="px-3 py-2 font-medium text-orange-300 bg-orange-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-orange-800 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Tem
                   <br />
                   (mg)
                 </th>
-                <th className="px-3 py-2 font-medium text-orange-300 bg-orange-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-orange-800 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Seng
                   <br />
                   (mg)
                 </th>
 
-                <th className="px-3 py-2 font-medium text-yellow-300 bg-yellow-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-yellow-800 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Ret
                   <br />
                   (mcg)
                 </th>
-                <th className="px-3 py-2 font-medium text-yellow-300 bg-yellow-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-yellow-800 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   B-Kar
                   <br />
                   (mcg)
                 </th>
-                <th className="px-3 py-2 font-medium text-yellow-300 bg-yellow-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-yellow-800 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Kar-Tot
                   <br />
                   (mcg)
                 </th>
-                <th className="px-3 py-2 font-medium text-yellow-300 bg-yellow-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-yellow-800 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Thia
                   <br />
                   (mg)
                 </th>
-                <th className="px-3 py-2 font-medium text-yellow-300 bg-yellow-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-yellow-800 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Ribo
                   <br />
                   (mg)
                 </th>
-                <th className="px-3 py-2 font-medium text-yellow-300 bg-yellow-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-yellow-800 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Nia
                   <br />
                   (mg)
                 </th>
-                <th className="px-3 py-2 font-medium text-yellow-300 bg-yellow-500/5 border-b border-gray-700 text-right">
+                <th className="px-3 py-2 font-medium text-yellow-800 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-500/5 border-b border-gray-200 dark:border-gray-700 text-right">
                   Vit-C
                   <br />
                   (mg)
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-gray-200 dark:divide-white/5 bg-white dark:bg-gray-900">
               {paginatedIngredients.length === 0 ? (
                 <tr>
-                  <td colSpan={26} className="px-6 py-12 text-center text-gray-400">
+                  <td colSpan={26} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                     {searchQuery ? "Tidak ditemukan" : "Belum ada data"}
                   </td>
                 </tr>
               ) : (
                 paginatedIngredients.map((ing) => (
-                  <tr key={ing.id} className="hover:bg-white/5 transition-colors group">
-                    <td className="sticky left-0 z-20 bg-gray-900 border-r border-white/10 px-3 py-2 text-green-400/70 font-mono w-[80px] min-w-[80px]">{ing.code || "-"}</td>
-                    <td className="sticky left-[80px] z-20 bg-gray-900 border-r border-white/10 px-3 py-2 text-white font-medium w-[256px] min-w-[256px] truncate" title={ing.name}>
+                  <tr key={ing.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
+                    <td className="sticky left-0 z-20 bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-white/5 border-r border-gray-200 dark:border-white/10 px-3 py-2 text-green-700 dark:text-green-400/70 font-mono w-[80px] min-w-[80px]">
+                      {ing.code || "-"}
+                    </td>
+                    <td
+                      className="sticky left-[80px] z-20 bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-white/5 border-r border-gray-200 dark:border-white/10 px-3 py-2 text-gray-900 dark:text-white font-medium w-[256px] min-w-[256px] truncate"
+                      title={ing.name}
+                    >
                       {ing.name}
                     </td>
-                    <td className="sticky left-[336px] z-20 bg-gray-900 border-r-2 border-white/20 px-3 py-2 text-gray-400 w-[128px] min-w-[128px] truncate" title={ing.source || ""}>
+                    <td
+                      className="sticky left-[336px] z-20 bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-white/5 border-r-2 border-gray-200 dark:border-white/20 px-3 py-2 text-gray-500 dark:text-gray-400 w-[128px] min-w-[128px] truncate"
+                      title={ing.source || ""}
+                    >
                       {ing.source || "-"}
                     </td>
 
-                    <td className="px-3 py-2 text-blue-100 bg-blue-500/5 text-right tabular-nums">{ing.water_g}</td>
-                    <td className="px-3 py-2 text-blue-100 bg-blue-500/5 text-right tabular-nums font-bold">{ing.energy_kcal}</td>
-                    <td className="px-3 py-2 text-blue-100 bg-blue-500/5 text-right tabular-nums">{ing.protein_g}</td>
-                    <td className="px-3 py-2 text-blue-100 bg-blue-500/5 text-right tabular-nums">{ing.fat_g}</td>
-                    <td className="px-3 py-2 text-blue-100 bg-blue-500/5 text-right tabular-nums">{ing.carbs_g}</td>
-                    <td className="px-3 py-2 text-blue-100 bg-blue-500/5 text-right tabular-nums">{ing.fiber_g}</td>
-                    <td className="px-3 py-2 text-blue-100 bg-blue-500/5 text-right tabular-nums">{ing.ash_g}</td>
+                    <td className="px-3 py-2 text-blue-900 dark:text-blue-100 bg-blue-50 dark:bg-blue-500/5 text-right tabular-nums">{ing.water_g}</td>
+                    <td className="px-3 py-2 text-blue-900 dark:text-blue-100 bg-blue-50 dark:bg-blue-500/5 text-right tabular-nums font-bold">{ing.energy_kcal}</td>
+                    <td className="px-3 py-2 text-blue-900 dark:text-blue-100 bg-blue-50 dark:bg-blue-500/5 text-right tabular-nums">{ing.protein_g}</td>
+                    <td className="px-3 py-2 text-blue-900 dark:text-blue-100 bg-blue-50 dark:bg-blue-500/5 text-right tabular-nums">{ing.fat_g}</td>
+                    <td className="px-3 py-2 text-blue-900 dark:text-blue-100 bg-blue-50 dark:bg-blue-500/5 text-right tabular-nums">{ing.carbs_g}</td>
+                    <td className="px-3 py-2 text-blue-900 dark:text-blue-100 bg-blue-50 dark:bg-blue-500/5 text-right tabular-nums">{ing.fiber_g}</td>
+                    <td className="px-3 py-2 text-blue-900 dark:text-blue-100 bg-blue-50 dark:bg-blue-500/5 text-right tabular-nums">{ing.ash_g}</td>
 
-                    <td className="px-3 py-2 text-orange-100 bg-orange-500/5 text-right tabular-nums">{ing.calcium_mg}</td>
-                    <td className="px-3 py-2 text-orange-100 bg-orange-500/5 text-right tabular-nums">{ing.phosphorus_mg}</td>
-                    <td className="px-3 py-2 text-orange-100 bg-orange-500/5 text-right tabular-nums">{ing.iron_mg}</td>
-                    <td className="px-3 py-2 text-orange-100 bg-orange-500/5 text-right tabular-nums">{ing.sodium_mg}</td>
-                    <td className="px-3 py-2 text-orange-100 bg-orange-500/5 text-right tabular-nums">{ing.potassium_mg}</td>
-                    <td className="px-3 py-2 text-orange-100 bg-orange-500/5 text-right tabular-nums">{ing.copper_mg}</td>
-                    <td className="px-3 py-2 text-orange-100 bg-orange-500/5 text-right tabular-nums">{ing.zinc_mg}</td>
+                    <td className="px-3 py-2 text-orange-900 dark:text-orange-100 bg-orange-50 dark:bg-orange-500/5 text-right tabular-nums">{ing.calcium_mg}</td>
+                    <td className="px-3 py-2 text-orange-900 dark:text-orange-100 bg-orange-50 dark:bg-orange-500/5 text-right tabular-nums">{ing.phosphorus_mg}</td>
+                    <td className="px-3 py-2 text-orange-900 dark:text-orange-100 bg-orange-50 dark:bg-orange-500/5 text-right tabular-nums">{ing.iron_mg}</td>
+                    <td className="px-3 py-2 text-orange-900 dark:text-orange-100 bg-orange-50 dark:bg-orange-500/5 text-right tabular-nums">{ing.sodium_mg}</td>
+                    <td className="px-3 py-2 text-orange-900 dark:text-orange-100 bg-orange-50 dark:bg-orange-500/5 text-right tabular-nums">{ing.potassium_mg}</td>
+                    <td className="px-3 py-2 text-orange-900 dark:text-orange-100 bg-orange-50 dark:bg-orange-500/5 text-right tabular-nums">{ing.copper_mg}</td>
+                    <td className="px-3 py-2 text-orange-900 dark:text-orange-100 bg-orange-50 dark:bg-orange-500/5 text-right tabular-nums">{ing.zinc_mg}</td>
 
-                    <td className="px-3 py-2 text-yellow-100 bg-yellow-500/5 text-right tabular-nums">{ing.retinol_mcg}</td>
-                    <td className="px-3 py-2 text-yellow-100 bg-yellow-500/5 text-right tabular-nums">{ing.beta_carotene_mcg}</td>
-                    <td className="px-3 py-2 text-yellow-100 bg-yellow-500/5 text-right tabular-nums">{ing.total_carotene_mcg}</td>
-                    <td className="px-3 py-2 text-yellow-100 bg-yellow-500/5 text-right tabular-nums">{ing.thiamin_mg}</td>
-                    <td className="px-3 py-2 text-yellow-100 bg-yellow-500/5 text-right tabular-nums">{ing.riboflavin_mg}</td>
-                    <td className="px-3 py-2 text-yellow-100 bg-yellow-500/5 text-right tabular-nums">{ing.niacin_mg}</td>
-                    <td className="px-3 py-2 text-yellow-100 bg-yellow-500/5 text-right tabular-nums">{ing.vitamin_c_mg}</td>
-                    <td className="px-3 py-2 text-purple-400 font-semibold text-right tabular-nums bg-purple-500/10 border-l border-white/5">{ing.default_bdd_percent}</td>
+                    <td className="px-3 py-2 text-yellow-900 dark:text-yellow-100 bg-yellow-50 dark:bg-yellow-500/5 text-right tabular-nums">{ing.retinol_mcg}</td>
+                    <td className="px-3 py-2 text-yellow-900 dark:text-yellow-100 bg-yellow-50 dark:bg-yellow-500/5 text-right tabular-nums">{ing.beta_carotene_mcg}</td>
+                    <td className="px-3 py-2 text-yellow-900 dark:text-yellow-100 bg-yellow-50 dark:bg-yellow-500/5 text-right tabular-nums">{ing.total_carotene_mcg}</td>
+                    <td className="px-3 py-2 text-yellow-900 dark:text-yellow-100 bg-yellow-50 dark:bg-yellow-500/5 text-right tabular-nums">{ing.thiamin_mg}</td>
+                    <td className="px-3 py-2 text-yellow-900 dark:text-yellow-100 bg-yellow-50 dark:bg-yellow-500/5 text-right tabular-nums">{ing.riboflavin_mg}</td>
+                    <td className="px-3 py-2 text-yellow-900 dark:text-yellow-100 bg-yellow-50 dark:bg-yellow-500/5 text-right tabular-nums">{ing.niacin_mg}</td>
+                    <td className="px-3 py-2 text-yellow-900 dark:text-yellow-100 bg-yellow-50 dark:bg-yellow-500/5 text-right tabular-nums">{ing.vitamin_c_mg}</td>
+                    <td className="px-3 py-2 text-purple-700 dark:text-purple-400 font-semibold text-right tabular-nums bg-purple-50 dark:bg-purple-500/10 border-l border-gray-200 dark:border-white/5">{ing.default_bdd_percent}</td>
 
                     <td className="px-3 py-2">
                       <div className="flex gap-2 whitespace-nowrap">
-                        <button onClick={() => openEditModal(ing)} className="text-yellow-400 hover:text-yellow-300 transition-colors">
+                        <button onClick={() => openEditModal(ing)} className="text-blue-600 dark:text-yellow-400 hover:text-blue-500 dark:hover:text-yellow-300 transition-colors">
                           Edit
                         </button>
-                        <button onClick={() => confirmDelete(ing.id, ing.name)} className="text-red-400 hover:text-red-300 transition-colors">
+                        <button onClick={() => confirmDelete(ing.id, ing.name)} className="text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 transition-colors">
                           Hapus
                         </button>
                       </div>
@@ -622,19 +644,23 @@ export default function MasterTKPIPage() {
         </div>
 
         {/* Pagination Footer */}
-        <div className="p-4 border-t border-white/10 flex items-center justify-between text-sm bg-gray-900/50 rounded-b-xl">
-          <div className="text-gray-400">
-            Menampilkan <span className="text-white font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-white font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari{" "}
-            <span className="text-white font-medium">{totalItems}</span> data
+        <div className="p-4 border-t border-gray-200 dark:border-white/10 flex items-center justify-between text-sm bg-gray-50 dark:bg-gray-900/50 rounded-b-xl">
+          <div className="text-gray-500 dark:text-gray-400">
+            Menampilkan <span className="text-gray-900 dark:text-white font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> -{" "}
+            <span className="text-gray-900 dark:text-white font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="text-gray-900 dark:text-white font-medium">{totalItems}</span> data
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={prevPage} disabled={currentPage === 1} className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors">
+            <button onClick={prevPage} disabled={currentPage === 1} className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-white transition-colors">
               <ChevronLeftIcon className="h-5 w-5" />
             </button>
-            <span className="text-gray-400">
-              Halaman <span className="text-white font-medium">{currentPage}</span> / {Math.max(1, totalPages)}
+            <span className="text-gray-500 dark:text-gray-400">
+              Halaman <span className="text-gray-900 dark:text-white font-medium">{currentPage}</span> / {Math.max(1, totalPages)}
             </span>
-            <button onClick={nextPage} disabled={currentPage >= totalPages || totalPages === 0} className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors">
+            <button
+              onClick={nextPage}
+              disabled={currentPage >= totalPages || totalPages === 0}
+              className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-white transition-colors"
+            >
               <ChevronRightIcon className="h-5 w-5" />
             </button>
           </div>
@@ -643,24 +669,24 @@ export default function MasterTKPIPage() {
 
       {isModalOpen && <FormModal editingId={editingId} formData={formData} setFormData={setFormData} onSubmit={handleSubmit} onClose={() => setIsModalOpen(false)} submitting={submitting} />}
 
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-white/10 bg-gray-900 p-6 shadow-xl">
-            <h3 className="text-xl font-bold text-white mb-2">Hapus Bahan Makanan?</h3>
-            <p className="text-gray-400 mb-6">
-              Apakah Anda yakin ingin menghapus <strong>{deleteConfirm.name}</strong>? Tindakan ini tidak dapat dibatalkan.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition-colors">
-                Batal
-              </button>
-              <button onClick={handleDelete} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-500 transition-colors">
-                Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmationModal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={handleDelete}
+        title="Hapus Bahan Makanan?"
+        message={`Apakah Anda yakin ingin menghapus ${deleteConfirm?.name}? Tindakan ini tidak dapat dibatalkan.`}
+        isDestructive={true}
+      />
+
+      <ConfirmationModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        onConfirm={executeDeleteAll}
+        title="RESET TOTAL DATABASE?"
+        message="PERINGATAN: Tindakan ini akan MENGHAPUS SEMUA DATA TKPI secara permanen. Anda tidak dapat membatalkan tindakan ini. Apakah Anda yakin?"
+        isDestructive={true}
+        confirmLabel="YA, HAPUS SEMUA"
+      />
     </div>
   );
 }
@@ -717,10 +743,10 @@ function FormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl border border-white/10 bg-gray-900 p-6 shadow-xl">
+      <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 p-6 shadow-xl">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-white">{editingId ? "Edit Bahan Makanan" : "Tambah Bahan Makanan"}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">{editingId ? "Edit Bahan Makanan" : "Tambah Bahan Makanan"}</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white">
             ✕
           </button>
         </div>
@@ -728,51 +754,51 @@ function FormModal({
         <form onSubmit={onSubmit} className="space-y-6">
           {/* Section 1: Info Dasar */}
           <div>
-            <h4 className="text-sm font-bold text-green-400 mb-4 border-b border-white/10 pb-2">📋 Informasi Dasar</h4>
+            <h4 className="text-sm font-bold text-green-700 dark:text-green-400 mb-4 border-b border-gray-200 dark:border-white/10 pb-2">📋 Informasi Dasar</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Kode Bahan</label>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Kode Bahan</label>
                 <input
                   type="text"
                   name="code"
                   value={formData.code || ""}
                   onChange={handleChange}
-                  className="w-full rounded-lg bg-gray-800 border border-white/10 px-3 py-2 text-white focus:border-green-500 outline-none"
+                  className="w-full rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-white/10 px-3 py-2 text-gray-900 dark:text-white focus:border-green-500 outline-none"
                   placeholder="Contoh: AR001"
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs text-gray-400 mb-1">Nama Bahan *</label>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Nama Bahan *</label>
                 <input
                   required
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full rounded-lg bg-gray-800 border border-white/10 px-3 py-2 text-white focus:border-green-500 outline-none"
+                  className="w-full rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-white/10 px-3 py-2 text-gray-900 dark:text-white focus:border-green-500 outline-none"
                   placeholder="Nama bahan makanan"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Sumber Data</label>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Sumber Data</label>
                 <input
                   type="text"
                   name="source"
                   value={formData.source || ""}
                   onChange={handleChange}
-                  className="w-full rounded-lg bg-gray-800 border border-white/10 px-3 py-2 text-white focus:border-green-500 outline-none"
+                  className="w-full rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-white/10 px-3 py-2 text-gray-900 dark:text-white focus:border-green-500 outline-none"
                   placeholder="Contoh: TKPI 2019"
                 />
               </div>
               <div>
-                <label className="block text-xs text-purple-400 mb-1 font-bold">BDD (%)</label>
+                <label className="block text-xs text-purple-700 dark:text-purple-400 mb-1 font-bold">BDD (%)</label>
                 <input
                   type="number"
                   step="0.1"
                   name="default_bdd_percent"
                   value={formData.default_bdd_percent}
                   onChange={handleChange}
-                  className="w-full rounded-lg bg-gray-800 border border-purple-500/30 px-3 py-2 text-white focus:border-purple-500 outline-none"
+                  className="w-full rounded-lg bg-gray-50 dark:bg-gray-800 border border-purple-500/30 px-3 py-2 text-gray-900 dark:text-white focus:border-purple-500 outline-none"
                 />
               </div>
             </div>
@@ -780,7 +806,7 @@ function FormModal({
 
           {/* Section 2: Makro */}
           <div>
-            <h4 className="text-sm font-bold text-blue-400 mb-4 border-b border-white/10 pb-2">🥗 Nutrisi Makro (per 100g BDD)</h4>
+            <h4 className="text-sm font-bold text-blue-700 dark:text-blue-400 mb-4 border-b border-gray-200 dark:border-white/10 pb-2">🥗 Nutrisi Makro (per 100g BDD)</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <InputNumber label="Energi (kcal)" name="energy_kcal" value={formData.energy_kcal} onChange={handleChange} />
               <InputNumber label="Protein (g)" name="protein_g" value={formData.protein_g} onChange={handleChange} />
@@ -794,7 +820,7 @@ function FormModal({
 
           {/* Section 3: Mineral */}
           <div>
-            <h4 className="text-sm font-bold text-orange-400 mb-4 border-b border-white/10 pb-2">⚗️ Mineral (mg)</h4>
+            <h4 className="text-sm font-bold text-orange-700 dark:text-orange-400 mb-4 border-b border-gray-200 dark:border-white/10 pb-2">⚗️ Mineral (mg)</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <InputNumber label="Kalsium" name="calcium_mg" value={formData.calcium_mg} onChange={handleChange} />
               <InputNumber label="Fosfor" name="phosphorus_mg" value={formData.phosphorus_mg} onChange={handleChange} />
@@ -808,7 +834,7 @@ function FormModal({
 
           {/* Section 4: Vitamin */}
           <div>
-            <h4 className="text-sm font-bold text-yellow-400 mb-4 border-b border-white/10 pb-2">💊 Vitamin</h4>
+            <h4 className="text-sm font-bold text-yellow-700 dark:text-yellow-400 mb-4 border-b border-gray-200 dark:border-white/10 pb-2">💊 Vitamin</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <InputNumber label="Retinol (mcg)" name="retinol_mcg" value={formData.retinol_mcg} onChange={handleChange} />
               <InputNumber label="B-Karoten (mcg)" name="beta_carotene_mcg" value={formData.beta_carotene_mcg} onChange={handleChange} />
@@ -820,8 +846,8 @@ function FormModal({
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-white/10">
-            <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition-colors">
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-white/10">
+            <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
               Batal
             </button>
             <button type="submit" disabled={submitting} className="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-500 transition-colors disabled:opacity-50">
@@ -837,8 +863,15 @@ function FormModal({
 function InputNumber({ label, name, value, onChange }: { label: string; name: string; value: number; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) {
   return (
     <div>
-      <label className="block text-xs text-gray-500 mb-1">{label}</label>
-      <input type="number" step="0.1" name={name} value={value} onChange={onChange} className="w-full rounded-lg bg-gray-800 border border-white/10 px-3 py-2 text-white focus:border-blue-500 outline-none" />
+      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</label>
+      <input
+        type="number"
+        step="0.1"
+        name={name}
+        value={value}
+        onChange={onChange}
+        className="w-full rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-white/10 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 outline-none"
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { MagnifyingGlassIcon, ArrowPathIcon, PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import ConfirmationModal from "../../components/ui/ConfirmationModal";
 
 // Tipe data sesuai schema database
 type ConversionFactor = {
@@ -16,6 +17,9 @@ export default function MasterConversionFactorsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ConversionFactor | null>(null);
+
+  // Modal State
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -93,16 +97,21 @@ export default function MasterConversionFactorsPage() {
   };
 
   // Handle Delete
-  const handleDelete = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
+  const confirmDelete = (id: number) => {
+    setDeleteId(id);
+  };
 
+  const handleDelete = async () => {
+    if (!deleteId) return;
     try {
-      const { error } = await supabase.from("conversion_factors").delete().eq("id", id);
+      const { error } = await supabase.from("conversion_factors").delete().eq("id", deleteId);
       if (error) throw error;
       fetchData();
     } catch (error) {
       console.error("Error deleting data:", error);
       alert("Gagal menghapus data.");
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -118,11 +127,11 @@ export default function MasterConversionFactorsPage() {
       {/* Header & Actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-white">Faktor Konversi (Mentah / Matang)</h2>
-          <p className="text-sm text-gray-400">Kelola data konversi berat bahan makanan mentah ke matang</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Faktor Konversi (Mentah / Matang)</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Kelola data konversi berat bahan makanan mentah ke matang</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchData} className="p-2 text-gray-400 hover:text-white transition-colors" title="Refresh Data">
+          <button onClick={fetchData} className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors" title="Refresh Data">
             <ArrowPathIcon className="h-5 w-5" />
           </button>
           <button onClick={openNewModal} className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-500 transition-colors">
@@ -133,7 +142,7 @@ export default function MasterConversionFactorsPage() {
       </div>
 
       {/* Search & Stats */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between rounded-xl bg-white/5 p-4 border border-white/10 backdrop-blur-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between rounded-xl bg-white dark:bg-white/5 p-4 border border-gray-200 dark:border-white/10 shadow-sm dark:backdrop-blur-sm">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -142,46 +151,46 @@ export default function MasterConversionFactorsPage() {
             placeholder="Cari bahan makanan..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-black/20 pl-9 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-black/20 pl-9 pr-4 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
           />
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-4 text-sm text-gray-400">
+        <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-green-500"></span>
             <span>
-              Total: <span className="text-white font-medium">{filteredData.length}</span> item
+              Total: <span className="text-gray-900 dark:text-white font-medium">{filteredData.length}</span> item
             </span>
           </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+      <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-black/20 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-white/10 bg-white/5 text-gray-400">
+              <tr className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400">
                 <th className="px-6 py-4 font-medium">No</th>
                 <th className="px-6 py-4 font-medium">Bahan Makanan (Matang)</th>
                 <th className="px-6 py-4 font-medium text-center">
                   Faktor Konversi
                   <br />
-                  <span className="text-xs text-gray-500">(Mentah/Matang)</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">(Mentah/Matang)</span>
                 </th>
                 <th className="px-6 py-4 font-medium text-center">
                   BDD (%)
                   <br />
-                  <span className="text-xs text-gray-500">(Berat Dapat Dimakan)</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">(Berat Dapat Dimakan)</span>
                 </th>
                 <th className="px-6 py-4 font-medium text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-gray-200 dark:divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                     <div className="flex items-center justify-center gap-2">
                       <ArrowPathIcon className="h-5 w-5 animate-spin" />
                       Memuat data...
@@ -196,25 +205,27 @@ export default function MasterConversionFactorsPage() {
                 </tr>
               ) : (
                 filteredData.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-white/5 transition-colors group">
+                  <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
                     <td className="px-6 py-4 text-gray-500 w-16">{index + 1}</td>
-                    <td className="px-6 py-4 font-medium text-white">{item.food_name}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{item.food_name}</td>
                     <td className="px-6 py-4 text-center">
                       <span
                         className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
-                          item.conversion_factor > 1 ? "bg-yellow-400/10 text-yellow-400 ring-yellow-400/20" : "bg-blue-400/10 text-blue-400 ring-blue-400/20"
+                          item.conversion_factor > 1
+                            ? "bg-yellow-50 text-yellow-700 ring-yellow-600/20 dark:bg-yellow-400/10 dark:text-yellow-400 dark:ring-yellow-400/20"
+                            : "bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/20"
                         }`}
                       >
                         {item.conversion_factor}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center text-gray-300">{item.bdd_percent}%</td>
+                    <td className="px-6 py-4 text-center text-gray-600 dark:text-gray-300">{item.bdd_percent}%</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleEdit(item)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 transition-colors" title="Edit">
+                        <button onClick={() => handleEdit(item)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-400/10 transition-colors" title="Edit">
                           <PencilIcon className="h-4 w-4" />
                         </button>
-                        <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-colors" title="Hapus">
+                        <button onClick={() => confirmDelete(item.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 transition-colors" title="Hapus">
                           <TrashIcon className="h-4 w-4" />
                         </button>
                       </div>
@@ -230,38 +241,38 @@ export default function MasterConversionFactorsPage() {
       {/* Modal Form */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-[#1A1A1A] p-6 shadow-2xl border border-white/10">
-            <h3 className="text-lg font-semibold text-white mb-4">{editingItem ? "Edit Faktor Konversi" : "Tambah Faktor Konversi"}</h3>
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1A1A1A] p-6 shadow-2xl border border-gray-200 dark:border-white/10">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{editingItem ? "Edit Faktor Konversi" : "Tambah Faktor Konversi"}</h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Nama Bahan Makanan (Matang)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Nama Bahan Makanan (Matang)</label>
                 <input
                   type="text"
                   required
                   value={formData.food_name}
                   onChange={(e) => setFormData({ ...formData, food_name: e.target.value })}
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white focus:border-green-500 focus:outline-none transition-colors"
+                  className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-black/20 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-green-500 focus:outline-none transition-colors"
                   placeholder="Contoh: Ayam Goreng"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Faktor Konversi</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Faktor Konversi</label>
                   <input
                     type="number"
                     step="0.1"
                     required
                     value={formData.conversion_factor}
                     onChange={(e) => setFormData({ ...formData, conversion_factor: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white focus:border-green-500 focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-black/20 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-green-500 focus:outline-none transition-colors"
                     placeholder="1.0"
                   />
                   <p className="mt-1 text-xs text-gray-500">Mentah / Matang</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">BDD (%)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">BDD (%)</label>
                   <input
                     type="number"
                     step="1"
@@ -270,7 +281,7 @@ export default function MasterConversionFactorsPage() {
                     required
                     value={formData.bdd_percent}
                     onChange={(e) => setFormData({ ...formData, bdd_percent: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white focus:border-green-500 focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-black/20 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-green-500 focus:outline-none transition-colors"
                     placeholder="100"
                   />
                   <p className="mt-1 text-xs text-gray-500">Berat Dapat Dimakan</p>
@@ -278,7 +289,11 @@ export default function MasterConversionFactorsPage() {
               </div>
 
               <div className="mt-6 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-lg px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                >
                   Batal
                 </button>
                 <button type="submit" disabled={loading} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-500 transition-colors disabled:opacity-50">
@@ -289,6 +304,15 @@ export default function MasterConversionFactorsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Hapus Data Faktor Konversi"
+        message="Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan."
+        isDestructive={true}
+      />
     </div>
   );
 }
