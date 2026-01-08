@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { TrashIcon, PlusIcon, ChevronLeftIcon } from "@heroicons/react/24/outline";
+import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabase";
 
 type MealTime = "Pagi" | "Siang" | "Malam" | "Snack Pagi" | "Snack Sore";
@@ -39,70 +38,31 @@ interface Dish {
 }
 
 export default function MenuInputPage() {
-  const location = useLocation();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const locationState = location.state as any;
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [activeMealTime, setActiveMealTime] = useState<MealTime>("Pagi");
+  const [activeCateringId, setActiveCateringId] = useState<number | null>(null);
 
-  const [selectedDate, setSelectedDate] = useState<string>(locationState?.date || new Date().toISOString().split("T")[0]);
-  const [activeMealTime, setActiveMealTime] = useState<MealTime | null>(locationState?.mealTime || null);
-
-  if (activeMealTime) {
-    return <MenuDetailTable mealTime={activeMealTime} date={selectedDate} onBack={() => setActiveMealTime(null)} />;
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Input Menu Harian</h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Perencanaan gramasi harian catering</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-green-500 outline-none transition-colors"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(["Pagi", "Siang", "Malam", "Snack Pagi", "Snack Sore"] as MealTime[]).map((waktu) => (
-          <div
-            key={waktu}
-            onClick={() => setActiveMealTime(waktu)}
-            className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 p-6 hover:shadow-lg hover:border-green-500/50 transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[200px] text-center"
-          >
-            <div className="mb-4 p-4 rounded-full bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
-              <span className="text-3xl">{waktu === "Pagi" ? "🌅" : waktu === "Siang" ? "☀️" : waktu === "Malam" ? "🌙" : "🍪"}</span>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">{waktu}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Kelola gramasi menu</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date: string; onBack: () => void }) {
-  const [dishes, setDishes] = useState<Dish[]>([]);
+  // Master Data & State
   const [caterings, setCaterings] = useState<{ id: number; name: string }[]>([]);
-  const [selectedCateringId, setSelectedCateringId] = useState<number | null>(null);
+  const [dishes, setDishes] = useState<Dish[]>([]);
   const [masterIngredients, setMasterIngredients] = useState<MasterIngredient[]>([]);
   const [masterConversions, setMasterConversions] = useState<MasterConversion[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Fetch Initial Master Data
   useEffect(() => {
     async function initData() {
+      setIsLoading(true);
       try {
+        // Caterings
         const { data: catData } = await supabase.from("caterings").select("id, name").order("name");
-        if (catData) {
+        if (catData && catData.length > 0) {
           setCaterings(catData);
-          if (catData.length > 0) setSelectedCateringId(catData[0].id);
+          setActiveCateringId(catData[0].id); // Default first catering
         }
 
+        // Master data (Limit for performance)
         const { data: convData } = await supabase.from("conversion_factors").select("id, food_name, conversion_factor, bdd_percent").order("food_name");
         if (convData) setMasterConversions(convData);
 
@@ -110,16 +70,21 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
         if (ingData) setMasterIngredients(ingData);
       } catch (e) {
         console.error(e);
+      } finally {
+        setIsLoading(false);
       }
     }
     initData();
   }, []);
 
+  // Fetch Menu Data when Filters Change
   useEffect(() => {
-    if (!selectedCateringId) return;
+    if (!activeCateringId) return;
+
     async function loadMenu() {
+      // setIsLoading(true); // Optional: loading state per tab switch
       try {
-        const { data: menuData } = await supabase.from("daily_menus").select("id").eq("date", date).eq("meal_time", mealTime).eq("catering_id", selectedCateringId).maybeSingle();
+        const { data: menuData } = await supabase.from("daily_menus").select("id").eq("date", selectedDate).eq("meal_time", activeMealTime).eq("catering_id", activeCateringId).maybeSingle();
 
         if (!menuData) {
           setDishes([]);
@@ -137,8 +102,8 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
           const mapped: Dish[] = (dbDishes as any[]).map((d) => ({
             id: d.id,
             name: d.name,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             items:
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               d.dish_ingredients?.map((i: any) => ({
                 id: i.id,
                 ingredientId: i.ingredient_id,
@@ -159,8 +124,9 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
       }
     }
     loadMenu();
-  }, [selectedCateringId, date, mealTime]);
+  }, [selectedDate, activeMealTime, activeCateringId]);
 
+  // ---- Logic CRUD Menu ----
   const addDish = () => {
     setDishes([
       ...dishes,
@@ -224,7 +190,12 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
     setDishes(
       dishes.map((d) => {
         if (d.id !== dishId) return d;
-        return { ...d, items: d.items.filter((i) => i.id !== itemId) };
+        const remainingItems = d.items.filter((i) => i.id !== itemId);
+        if (remainingItems.length === 0) {
+          // Keep at least one empty row? Or allows empty dish?
+          // Better keeps empty row if it's the last one, logic here allows empty.
+        }
+        return { ...d, items: remainingItems };
       })
     );
   };
@@ -239,38 +210,28 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
             if (item.id !== itemId) return item;
 
             const newItem = { ...item, ...updates };
-
+            // Calc logic
             const cooked = "weightCooked" in updates ? updates.weightCooked || 0 : newItem.weightCooked;
             const factor = "conversionFactor" in updates ? updates.conversionFactor || 1 : newItem.conversionFactor;
             const bdd = "bdd" in updates ? updates.bdd || 100 : newItem.bdd;
 
-            // Enhanced Weight Logic
             // 1. Edible Mean Raw (Berat Mentah Bersih) = Berat Matang * Faktor
             const edibleRaw = cooked * factor;
 
-            // 2. Raw Weight (Berat Mentah Kotor/Beli) = Edible Raw / (BDD/100)
-            // Rumus: Gross = Net / Percentage
+            // 2. Gross Raw (Beli) = Edible / BDD
             let rawGross = 0;
-            if (bdd > 0) {
-              rawGross = edibleRaw / (bdd / 100);
-            } else {
-              rawGross = edibleRaw;
-            }
+            if (bdd > 0) rawGross = edibleRaw / (bdd / 100);
+            else rawGross = edibleRaw;
 
-            // Enhanced Rice Detection logic
+            // Rice Logic
             const nameLower = newItem.ingredientName.toLowerCase();
             const isRiceDish = (nameLower.includes("nasi") || nameLower.includes("bubur") || nameLower.includes("lontong") || nameLower.includes("ketupat")) && !nameLower.includes("goreng");
 
             if (isRiceDish) {
-              // Khusus Nasi: Berat Mentah yg ditampilkan = Berat Matang (Agar user tidak bingung belanja nasi? Atau belanja beras?)
-              // Biasanya user input Nasi Matang, tapi kalau mau hitung beras harusnya pakai faktor 0.4
-              // TAPI User request "Berat Bersih = Berat Matang" kemarin.
-              // Mari kita set Raw = Cooked saja untuk aman agar tidak meledak angkanya.
               newItem.weightRaw = cooked;
               newItem.weightNet = cooked;
             } else {
               newItem.weightRaw = Number(rawGross.toFixed(1));
-              // Net Weight (Gizi) = Raw Gross * BDD (Kembali ke Edible Raw)
               newItem.weightNet = Number((newItem.weightRaw * (bdd / 100)).toFixed(1));
             }
             return newItem;
@@ -281,24 +242,30 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
   };
 
   const handleSave = async () => {
-    if (!selectedCateringId) return;
+    if (!activeCateringId) return;
     setIsSaving(true);
     try {
       let menuId;
-      const { data: exist } = await supabase.from("daily_menus").select("id").eq("date", date).eq("meal_time", mealTime).eq("catering_id", selectedCateringId).maybeSingle();
+      const { data: exist } = await supabase.from("daily_menus").select("id").eq("date", selectedDate).eq("meal_time", activeMealTime).eq("catering_id", activeCateringId).maybeSingle();
 
       if (exist) {
         menuId = exist.id;
         await supabase.from("menu_dishes").delete().eq("menu_id", menuId);
       } else {
-        const { data: newM } = await supabase.from("daily_menus").insert({ date, meal_time: mealTime, catering_id: selectedCateringId }).select().single();
+        const { data: newM } = await supabase.from("daily_menus").insert({ date: selectedDate, meal_time: activeMealTime, catering_id: activeCateringId }).select().single();
         if (newM) menuId = newM.id;
       }
 
       if (menuId) {
         for (const dish of dishes) {
-          if (!dish.name) continue;
-          const { data: newDish } = await supabase.from("menu_dishes").insert({ menu_id: menuId, name: dish.name }).select().single();
+          if (!dish.name && dish.items.length === 0) continue;
+          // Allow dish name only? Or items only? Prefer Name.
+
+          const { data: newDish } = await supabase
+            .from("menu_dishes")
+            .insert({ menu_id: menuId, name: dish.name || "Menu Tanpa Nama" })
+            .select()
+            .single();
           if (newDish && dish.items.length > 0) {
             const ings = dish.items.map((i) => ({
               dish_id: newDish.id,
@@ -315,7 +282,13 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
           }
         }
       }
-      alert("Data tersimpan!");
+      // Feedback visual simple
+      const btn = document.getElementById("save-btn");
+      if (btn) {
+        const originalText = btn.innerText;
+        btn.innerText = "Tersimpan!";
+        setTimeout(() => (btn.innerText = originalText), 2000);
+      }
     } catch (err) {
       console.error(err);
       alert("Gagal menyimpan");
@@ -326,64 +299,85 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="sticky top-0 z-30 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-white/10 pb-4 pt-2 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <button onClick={onBack} className="p-2 -ml-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors">
-              <ChevronLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-wide">GRAMASI HARIAN CATERING</h1>
-              <div className="flex gap-4 text-sm text-gray-500 dark:text-gray-400">
-                <span>
-                  Tanggal: <span className="text-gray-900 dark:text-white font-medium">{date}</span>
-                </span>
-                <span>
-                  Jam: <span className="text-gray-900 dark:text-white font-medium">{mealTime}</span>
-                </span>
-              </div>
-            </div>
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-wide">Input Gramasi Catering</h2>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400">Tanggal Menu:</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded px-2 py-1 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-green-500 outline-none"
+            />
           </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <select
-              value={selectedCateringId || ""}
-              onChange={(e) => setSelectedCateringId(Number(e.target.value))}
-              className="flex-1 md:w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500"
-            >
-              {caterings.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-
-            <button onClick={handleSave} disabled={isSaving} className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-sm hover:bg-green-500 disabled:opacity-50 transition-colors">
-              {isSaving ? "Menyimpan..." : "Simpan Data"}
-            </button>
-          </div>
+        </div>
+        <div>
+          <button id="save-btn" onClick={handleSave} disabled={isSaving || isLoading} className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-sm hover:bg-green-500 disabled:opacity-50 transition-colors min-w-[120px]">
+            {isSaving ? "Menyimpan..." : "Simpan Data"}
+          </button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden">
+      {/* Tabs Waktu Makan */}
+      <div className="border-b border-gray-200 dark:border-white/10">
+        <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
+          {(["Pagi", "Siang", "Malam", "Snack Pagi", "Snack Sore"] as MealTime[]).map((time) => (
+            <button
+              key={time}
+              onClick={() => setActiveMealTime(time)}
+              className={`
+                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors outline-none
+                ${activeMealTime === time ? "border-green-500 text-green-600 dark:text-green-400" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200"}
+              `}
+            >
+              {time === "Pagi" ? "🌅" : time === "Siang" ? "☀️" : time === "Malam" ? "🌙" : "☕"} {time}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tabs Catering */}
+      <div>
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {caterings.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCateringId(cat.id)}
+              className={`
+                        px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap
+                        ${activeCateringId === cat.id ? "bg-gray-900 text-white dark:bg-white dark:text-black shadow-md" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"}
+                    `}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Konten Tabel */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden min-h-[400px]">
+        {isLoading && <div className="p-4 text-center text-gray-500 animate-pulse">Memuat data...</div>}
+
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-100 text-xs uppercase tracking-wider font-bold border-b border-blue-200 dark:border-blue-800">
-                <th className="px-4 py-3 text-left w-64 border-r border-blue-200 dark:border-blue-800">Menu Makanan</th>
-                <th className="px-4 py-3 text-left w-64 border-r border-blue-200 dark:border-blue-800">Cara Pengolahan (Faktor)</th>
-                <th className="px-4 py-3 text-left w-64 border-r border-blue-200 dark:border-blue-800">Bahan Makanan (TKPI)</th>
-                <th className="px-2 py-3 text-center w-24 border-r border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+              <tr className="bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100 text-xs uppercase tracking-wider font-bold border-b border-blue-100 dark:border-blue-800/50">
+                <th className="px-4 py-3 text-left w-64 border-r border-gray-200 dark:border-white/5">Menu Makanan</th>
+                <th className="px-4 py-3 text-left w-56 border-r border-gray-200 dark:border-white/5">Cara Pengolahan (Faktor)</th>
+                <th className="px-4 py-3 text-left w-64 border-r border-gray-200 dark:border-white/5">Bahan Makanan (TKPI)</th>
+                <th className="px-2 py-3 text-center w-24 border-r border-gray-200 dark:border-white/5 bg-blue-100/50 dark:bg-blue-900/40">
                   Berat
                   <br />
                   Matang (gr)
                 </th>
-                <th className="px-2 py-3 text-center w-24 border-r border-blue-200 dark:border-blue-800">
+                <th className="px-2 py-3 text-center w-24 border-r border-gray-200 dark:border-white/5">
                   Berat
                   <br />
                   Mentah (gr)
                 </th>
-                <th className="px-2 py-3 text-center w-20 border-r border-blue-200 dark:border-blue-800">
+                <th className="px-2 py-3 text-center w-16 border-r border-gray-200 dark:border-white/5">
                   BDD
                   <br />
                   (%)
@@ -395,7 +389,10 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
               {dishes.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-12 text-center text-gray-500">
-                    Belum ada menu. Klik Tambah Menu di bawah.
+                    Kosong.{" "}
+                    <button onClick={addDish} className="text-green-600 hover:underline">
+                      Tambah Menu Baru
+                    </button>
                   </td>
                 </tr>
               ) : (
@@ -404,23 +401,23 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
                     {dish.items.map((item, itemIndex) => (
                       <tr key={item.id} className="group hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                         {itemIndex === 0 && (
-                          <td rowSpan={dish.items.length + 1} className="p-3 border-r border-gray-200 dark:border-white/10 align-top bg-gray-50/50 dark:bg-black/20">
+                          <td rowSpan={dish.items.length + 1} className="p-3 border-r border-gray-200 dark:border-white/5 align-top bg-gray-50/50 dark:bg-gray-900/30">
                             <div className="flex gap-2">
                               <input
                                 type="text"
                                 value={dish.name}
                                 onChange={(e) => updateDishName(dish.id, e.target.value)}
                                 placeholder="Nama Menu..."
-                                className="w-full bg-transparent font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-b focus:border-green-500"
+                                className="w-full bg-transparent font-bold text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-b focus:border-green-500 text-base"
                               />
-                              <button onClick={() => removeDish(dish.id)} tabIndex={-1} className="text-gray-400 hover:text-red-500">
+                              <button onClick={() => removeDish(dish.id)} tabIndex={-1} className="text-gray-300 hover:text-red-500 transition-colors">
                                 <TrashIcon className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
                         )}
 
-                        <td className="p-0 border-r border-gray-200 dark:border-white/10">
+                        <td className="p-0 border-r border-gray-200 dark:border-white/5">
                           <ConversionInput
                             value={item.conversionName}
                             onSelect={(id, name, factor) => updateItem(dish.id, item.id, { conversionId: id, conversionName: name, conversionFactor: factor })}
@@ -428,36 +425,36 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
                           />
                         </td>
 
-                        <td className="p-0 border-r border-gray-200 dark:border-white/10">
+                        <td className="p-0 border-r border-gray-200 dark:border-white/5">
                           <IngredientInput value={item.ingredientName} onSelect={(id, name, bdd) => updateItem(dish.id, item.id, { ingredientId: id, ingredientName: name, bdd })} masterIngredients={masterIngredients} />
                         </td>
 
-                        <td className="p-0 border-r border-gray-200 dark:border-white/10 bg-blue-50/30 dark:bg-blue-900/10">
+                        <td className="p-0 border-r border-gray-200 dark:border-white/5 bg-blue-50/30 dark:bg-blue-900/10">
                           <input
                             type="number"
                             value={item.weightCooked || ""}
                             onChange={(e) => updateItem(dish.id, item.id, { weightCooked: parseFloat(e.target.value) || 0 })}
-                            className="w-full h-full p-3 text-center bg-transparent focus:outline-none focus:bg-green-50 dark:focus:bg-green-900/20 font-medium"
+                            className="w-full h-full p-3 text-center bg-transparent focus:outline-none focus:bg-green-100 dark:focus:bg-green-900/30 font-bold text-gray-900 dark:text-white"
                             placeholder="0"
                           />
                         </td>
 
-                        <td className="p-3 text-center font-mono border-r border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400">{item.weightRaw}</td>
+                        <td className="p-3 text-center font-mono border-r border-gray-200 dark:border-white/5 text-gray-600 dark:text-gray-300">{item.weightRaw}</td>
 
-                        <td className="p-3 text-center border-r border-gray-200 dark:border-white/10 text-gray-500">{item.bdd}</td>
+                        <td className="p-3 text-center border-r border-gray-200 dark:border-white/5 text-gray-500 text-xs">{item.bdd}</td>
 
                         <td className="p-2 text-center">
-                          <button onClick={() => removeItem(dish.id, item.id)} tabIndex={-1} className="text-gray-300 hover:text-red-500">
+                          <button onClick={() => removeItem(dish.id, item.id)} tabIndex={-1} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
                             <TrashIcon className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>
                     ))}
-                    {/* Add Item Row Inside Dish */}
+                    {/* Add Item Row */}
                     <tr>
-                      <td colSpan={6} className="p-2 bg-gray-50/50 dark:bg-white/5 border-t border-dashed border-gray-200 dark:border-white/10">
-                        <button onClick={() => addItemToDish(dish.id)} className="text-xs font-medium text-green-600 dark:text-green-400 hover:underline flex items-center gap-1 mx-auto">
-                          <PlusIcon className="w-3 h-3" /> Tambah Bahan untuk {dish.name || "Menu Ini"}
+                      <td colSpan={6} className="p-2 bg-gray-50/30 dark:bg-white/5 border-t border-dashed border-gray-200 dark:border-white/10">
+                        <button onClick={() => addItemToDish(dish.id)} className="text-xs font-semibold text-green-600 dark:text-green-400 hover:text-green-500 flex items-center gap-1 mx-auto uppercase tracking-wide">
+                          <PlusIcon className="w-3 h-3" /> Tambah Bahan
                         </button>
                       </td>
                     </tr>
@@ -468,12 +465,12 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
           </table>
         </div>
 
-        <div className="p-4 border-t border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-gray-900/50">
+        <div className="p-4 border-t border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-gray-900/50 text-center">
           <button
             onClick={addDish}
-            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-white/20 rounded-lg text-gray-500 dark:text-gray-400 hover:border-green-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all font-medium flex items-center justify-center gap-2"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm font-medium"
           >
-            <PlusIcon className="w-5 h-5" /> Tambah Menu Baru
+            <PlusIcon className="w-5 h-5" /> Tambah Masakan Baru
           </button>
         </div>
       </div>
@@ -481,9 +478,12 @@ function MenuDetailTable({ mealTime, date, onBack }: { mealTime: MealTime; date:
   );
 }
 
+// ---- Subcomponents ----
+
 function ConversionInput({ value, onSelect, masterConversions }: { value: string; onSelect: (id: number | null, name: string, factor: number) => void; masterConversions: MasterConversion[] }) {
   const [show, setShow] = useState(false);
-  const suggestions = masterConversions.filter((c) => c.food_name.toLowerCase().includes((value || "").toLowerCase())).slice(0, 10);
+  // Optimization: Filter only when show is true or typing?
+  const suggestions = show ? masterConversions.filter((c) => c.food_name.toLowerCase().includes((value || "").toLowerCase())).slice(0, 10) : [];
 
   return (
     <div className="relative h-full">
@@ -497,12 +497,16 @@ function ConversionInput({ value, onSelect, masterConversions }: { value: string
         onFocus={() => setShow(true)}
         onBlur={() => setTimeout(() => setShow(false), 200)}
         placeholder="Cara olah..."
-        className="w-full h-full p-3 bg-transparent focus:outline-none focus:ring-inset focus:ring-2 focus:ring-green-500"
+        className="w-full h-full p-3 bg-transparent focus:outline-none focus:ring-inset focus:ring-2 focus:ring-green-500 text-sm border-none"
       />
       {show && suggestions.length > 0 && (
         <div className="absolute top-full left-0 w-full min-w-[200px] z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 shadow-xl rounded-b-lg max-h-48 overflow-y-auto">
           {suggestions.map((s) => (
-            <div key={s.id} onClick={() => onSelect(s.id, s.food_name, s.conversion_factor)} className="p-2 hover:bg-green-50 dark:hover:bg-white/10 cursor-pointer flex justify-between text-xs text-gray-700 dark:text-gray-200">
+            <div
+              key={s.id}
+              onClick={() => onSelect(s.id, s.food_name, s.conversion_factor)}
+              className="p-2 hover:bg-green-50 dark:hover:bg-white/10 cursor-pointer flex justify-between text-xs text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-white/5 last:border-0"
+            >
               <span>{s.food_name}</span>
               <span className="font-bold text-green-600">x{s.conversion_factor}</span>
             </div>
@@ -515,7 +519,7 @@ function ConversionInput({ value, onSelect, masterConversions }: { value: string
 
 function IngredientInput({ value, onSelect, masterIngredients }: { value: string; onSelect: (id: number | null, name: string, bdd: number) => void; masterIngredients: MasterIngredient[] }) {
   const [show, setShow] = useState(false);
-  const suggestions = masterIngredients.filter((i) => i.name.toLowerCase().includes((value || "").toLowerCase())).slice(0, 10);
+  const suggestions = show ? masterIngredients.filter((i) => i.name.toLowerCase().includes((value || "").toLowerCase())).slice(0, 20) : [];
 
   return (
     <div className="relative h-full">
@@ -529,13 +533,17 @@ function IngredientInput({ value, onSelect, masterIngredients }: { value: string
         onFocus={() => setShow(true)}
         onBlur={() => setTimeout(() => setShow(false), 200)}
         placeholder="Cari bahan..."
-        className="w-full h-full p-3 bg-transparent focus:outline-none focus:ring-inset focus:ring-2 focus:ring-green-500"
+        className="w-full h-full p-3 bg-transparent focus:outline-none focus:ring-inset focus:ring-2 focus:ring-green-500 text-sm border-none"
       />
       {show && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 w-full min-w-[250px] z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 shadow-xl rounded-b-lg max-h-48 overflow-y-auto">
+        <div className="absolute top-full left-0 w-full min-w-[300px] z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 shadow-xl rounded-b-lg max-h-60 overflow-y-auto">
           {suggestions.map((s) => (
-            <div key={s.id} onClick={() => onSelect(s.id, s.name, s.default_bdd_percent || 100)} className="p-2 hover:bg-green-50 dark:hover:bg-white/10 cursor-pointer text-xs text-gray-700 dark:text-gray-200">
-              <span className="text-green-500 font-mono mr-2">{s.code}</span> {s.name}
+            <div
+              key={s.id}
+              onClick={() => onSelect(s.id, s.name, s.default_bdd_percent || 100)}
+              className="px-3 py-2 hover:bg-green-50 dark:hover:bg-white/10 cursor-pointer text-xs text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-white/5 last:border-0"
+            >
+              <span className="text-green-600 font-mono mr-2 font-bold">{s.code}</span> {s.name}
             </div>
           ))}
         </div>
