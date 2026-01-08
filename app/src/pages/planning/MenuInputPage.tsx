@@ -102,8 +102,8 @@ export default function MenuInputPage() {
           const mapped: Dish[] = (dbDishes as any[]).map((d) => ({
             id: d.id,
             name: d.name,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             items:
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               d.dish_ingredients?.map((i: any) => ({
                 id: i.id,
                 ingredientId: i.ingredient_id,
