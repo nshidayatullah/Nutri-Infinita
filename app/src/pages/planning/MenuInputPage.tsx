@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabase";
 
-type MealTime = "Pagi" | "Siang" | "Malam" | "Snack Pagi" | "Snack Sore";
+// MealTime type removed as we use dynamic string
 
 interface MasterIngredient {
   id: number;
@@ -39,7 +39,10 @@ interface Dish {
 
 export default function MenuInputPage() {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
-  const [activeMealTime, setActiveMealTime] = useState<MealTime>("Pagi");
+  // Dynamic Meal Times
+  const [mealTimeList, setMealTimeList] = useState<{ name: string; emoji: string }[]>([]);
+  // Fallback if DB empty: use default
+  const [activeMealTime, setActiveMealTime] = useState<string>("Pagi");
   const [activeCateringId, setActiveCateringId] = useState<number | null>(null);
 
   // Master Data & State
@@ -55,6 +58,27 @@ export default function MenuInputPage() {
     async function initData() {
       setIsLoading(true);
       try {
+        // Meal Types
+        const { data: mealData } = await supabase.from("meal_types").select("name, emoji").order("sort_order");
+        if (mealData && mealData.length > 0) {
+          setMealTimeList(mealData);
+          // Set default if not set or invalid
+          // If current activeMealTime is not in list, switch to first.
+          // But we init with "Pagi", so let's just stick to "Pagi" unless it doesn't exist?
+          // For safety, let's keep "Pagi" as initial state, but if list loads and "Pagi" not there, switch.
+          const exists = mealData.find((m) => m.name === activeMealTime);
+          if (!exists) setActiveMealTime(mealData[0].name);
+        } else {
+          // Fallback hardcoded if table empty
+          setMealTimeList([
+            { name: "Pagi", emoji: "🌅" },
+            { name: "Siang", emoji: "☀️" },
+            { name: "Malam", emoji: "🌙" },
+            { name: "Snack Pagi", emoji: "☕" },
+            { name: "Snack Sore", emoji: "☕" },
+          ]);
+        }
+
         // Caterings
         const { data: catData } = await supabase.from("caterings").select("id, name").order("name");
         if (catData && catData.length > 0) {
@@ -323,16 +347,16 @@ export default function MenuInputPage() {
       {/* Tabs Waktu Makan */}
       <div className="border-b border-gray-200 dark:border-white/10">
         <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
-          {(["Pagi", "Siang", "Malam", "Snack Pagi", "Snack Sore"] as MealTime[]).map((time) => (
+          {mealTimeList.map((time) => (
             <button
-              key={time}
-              onClick={() => setActiveMealTime(time)}
+              key={time.name}
+              onClick={() => setActiveMealTime(time.name)}
               className={`
                 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors outline-none
-                ${activeMealTime === time ? "border-green-500 text-green-600 dark:text-green-400" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200"}
+                ${activeMealTime === time.name ? "border-green-500 text-green-600 dark:text-green-400" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200"}
               `}
             >
-              {time === "Pagi" ? "🌅" : time === "Siang" ? "☀️" : time === "Malam" ? "🌙" : "☕"} {time}
+              {time.emoji} {time.name}
             </button>
           ))}
         </nav>
