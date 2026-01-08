@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabase";
+import ConfirmationModal from "../../components/ui/ConfirmationModal";
 
 // MealTime type removed as we use dynamic string
 
@@ -44,6 +45,9 @@ export default function MenuInputPage() {
   // Fallback if DB empty: use default
   const [activeMealTime, setActiveMealTime] = useState<string>("Pagi");
   const [activeCateringId, setActiveCateringId] = useState<number | null>(null);
+
+  // Delete Confirmation State
+  const [deleteDishId, setDeleteDishId] = useState<string | null>(null);
 
   // Master Data & State
   const [caterings, setCaterings] = useState<{ id: number; name: string }[]>([]);
@@ -265,6 +269,13 @@ export default function MenuInputPage() {
     );
   };
 
+  const executeDeleteDish = () => {
+    if (deleteDishId) {
+      removeDish(deleteDishId);
+      setDeleteDishId(null);
+    }
+  };
+
   const handleSave = async () => {
     if (!activeCateringId) return;
     setIsSaving(true);
@@ -434,7 +445,7 @@ export default function MenuInputPage() {
                                 placeholder="Nama Menu..."
                                 className="w-full bg-transparent font-bold text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-b focus:border-green-500 text-base"
                               />
-                              <button onClick={() => removeDish(dish.id)} tabIndex={-1} className="text-gray-300 hover:text-red-500 transition-colors">
+                              <button onClick={() => setDeleteDishId(dish.id)} tabIndex={-1} className="text-gray-300 hover:text-red-500 transition-colors">
                                 <TrashIcon className="w-4 h-4" />
                               </button>
                             </div>
@@ -498,6 +509,14 @@ export default function MenuInputPage() {
           </button>
         </div>
       </div>
+      <ConfirmationModal
+        isOpen={!!deleteDishId}
+        onClose={() => setDeleteDishId(null)}
+        onConfirm={executeDeleteDish}
+        title="Hapus Menu"
+        message="Anda yakin ingin menghapus menu ini? Data yang belum disimpan akan hilang."
+        isDestructive={true}
+      />
     </div>
   );
 }

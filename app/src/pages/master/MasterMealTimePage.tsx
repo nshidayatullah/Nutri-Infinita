@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { PlusIcon, TrashIcon, PencilIcon, XMarkIcon, CheckIcon } from "@heroicons/react/24/outline";
+import ConfirmationModal from "../../components/ui/ConfirmationModal";
 
 type MealType = {
   id: number;
@@ -17,23 +18,31 @@ export default function MasterMealTimePage() {
   const [isAdding, setIsAdding] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", emoji: "🍽️", sort_order: 0 });
 
-  async function fetchData() {
+  // Modal State
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("meal_types").select("*").order("sort_order");
     if (error) console.error(error);
     if (data) setMealTypes(data);
     setLoading(false);
-  }
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Hapus waktu makan ini?")) return;
-    const { error } = await supabase.from("meal_types").delete().eq("id", id);
+  const confirmDelete = (id: number) => {
+    setDeleteId(id);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const { error } = await supabase.from("meal_types").delete().eq("id", deleteId);
     if (!error) fetchData();
     else alert("Gagal menghapus.");
+    setDeleteId(null);
   };
 
   const handleEdit = (item: MealType) => {
@@ -142,7 +151,7 @@ export default function MasterMealTimePage() {
                       <button onClick={() => handleEdit(item)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded">
                         <PencilIcon className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
+                      <button onClick={() => confirmDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
                         <TrashIcon className="w-4 h-4" />
                       </button>
                     </td>
@@ -161,6 +170,15 @@ export default function MasterMealTimePage() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmationModal
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Hapus Waktu Makan"
+        message="Anda yakin ingin menghapus waktu makan ini? Tindakan ini tidak dapat dibatalkan."
+        isDestructive={true}
+      />
     </div>
   );
 }
