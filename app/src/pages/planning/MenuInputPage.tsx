@@ -62,18 +62,20 @@ export default function MenuInputPage() {
     async function initData() {
       setIsLoading(true);
       try {
+        const [mealRes, catRes, convRes, ingRes] = await Promise.all([
+          supabase.from("meal_types").select("name, emoji").order("sort_order"),
+          supabase.from("caterings").select("id, name").order("name"),
+          supabase.from("conversion_factors").select("id, food_name, conversion_factor, bdd_percent").order("food_name"),
+          supabase.from("ingredients_library").select("id, name, code, default_bdd_percent").limit(2000).order("name"),
+        ]);
+
         // Meal Types
-        const { data: mealData } = await supabase.from("meal_types").select("name, emoji").order("sort_order");
+        const mealData = mealRes.data;
         if (mealData && mealData.length > 0) {
           setMealTimeList(mealData);
-          // Set default if not set or invalid
-          // If current activeMealTime is not in list, switch to first.
-          // But we init with "Pagi", so let's just stick to "Pagi" unless it doesn't exist?
-          // For safety, let's keep "Pagi" as initial state, but if list loads and "Pagi" not there, switch.
           const exists = mealData.find((m) => m.name === activeMealTime);
           if (!exists) setActiveMealTime(mealData[0].name);
         } else {
-          // Fallback hardcoded if table empty
           setMealTimeList([
             { name: "Pagi", emoji: "🌅" },
             { name: "Siang", emoji: "☀️" },
@@ -84,18 +86,15 @@ export default function MenuInputPage() {
         }
 
         // Caterings
-        const { data: catData } = await supabase.from("caterings").select("id, name").order("name");
+        const catData = catRes.data;
         if (catData && catData.length > 0) {
           setCaterings(catData);
           setActiveCateringId(catData[0].id); // Default first catering
         }
 
-        // Master data (Limit for performance)
-        const { data: convData } = await supabase.from("conversion_factors").select("id, food_name, conversion_factor, bdd_percent").order("food_name");
-        if (convData) setMasterConversions(convData);
-
-        const { data: ingData } = await supabase.from("ingredients_library").select("id, name, code, default_bdd_percent").limit(2000).order("name");
-        if (ingData) setMasterIngredients(ingData);
+        // Master Data
+        if (convRes.data) setMasterConversions(convRes.data);
+        if (ingRes.data) setMasterIngredients(ingRes.data);
       } catch (e) {
         console.error(e);
       } finally {
